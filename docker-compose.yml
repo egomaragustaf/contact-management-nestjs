@@ -6,3 +6,8 @@ services:
     env_file:
       - path: .env
         required: true
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
