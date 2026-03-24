@@ -64,10 +64,10 @@ export class AuthController {
     };
   }
 
-  @Delete('current')
+  @Delete('logout')
   @UseGuards(AuthGuard)
-  async logout(@Auth() user: User): Promise<WebResponse<boolean>> {
-    await this.authService.logout(user);
+  async logout(): Promise<WebResponse<boolean>> {
+    await this.authService.logout();
     return {
       data: true,
     };

@@ -1,43 +1,38 @@
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
+  Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/common/prisma/prisma.service';
-import type { Request } from 'express';
-import type { User } from '../../generated/prisma/client';
-
-interface AuthenticatedRequest extends Request {
-  user?: User;
-}
+import { JwtService } from '@nestjs/jwt';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const authorization = request.headers.authorization;
+    const request = context.switchToHttp().getRequest();
+    const token = this.extractTokenFromHeader(request);
 
-    if (!authorization) {
-      throw new UnauthorizedException('Missing authorization header');
+    if (!token) {
+      throw new UnauthorizedException();
     }
 
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) {
-      throw new UnauthorizedException('Invalid token format');
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      request['user'] = payload;
+    } catch {
+      throw new UnauthorizedException();
     }
 
-    const user = await this.prismaService.user.findFirst({
-      where: { token },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-
-    request.user = user;
     return true;
+  }
+
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    return type === 'Bearer' ? token : undefined;
   }
 }

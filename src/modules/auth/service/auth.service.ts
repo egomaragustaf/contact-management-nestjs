@@ -1,4 +1,5 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import { ValidationService } from 'src/common/validation/validation.service';
 import { UserValidation } from '../validation/auth.validation';
@@ -9,7 +10,6 @@ import {
   UserResponse,
 } from '../dto/auth.dto';
 import * as bcrypt from 'bcrypt';
-import { v4 as uuid } from 'uuid';
 import { User } from 'src/generated/prisma/client';
 
 @Injectable()
@@ -17,6 +17,7 @@ export class AuthService {
   constructor(
     private validationService: ValidationService,
     private prismaService: PrismaService,
+    private jwtService: JwtService,
   ) {}
 
   async register(request: RegisterUserRequest): Promise<UserResponse> {
@@ -51,7 +52,7 @@ export class AuthService {
       request,
     );
 
-    let user = await this.prismaService.user.findUnique({
+    const user = await this.prismaService.user.findUnique({
       where: {
         username: loginRequest.username,
       },
@@ -70,19 +71,13 @@ export class AuthService {
       throw new HttpException('Username or password is invalid', 401);
     }
 
-    user = await this.prismaService.user.update({
-      where: {
-        username: loginRequest.username,
-      },
-      data: {
-        token: uuid(),
-      },
-    });
+    const payload = { sub: user.username, username: user.username };
+    const token = await this.jwtService.signAsync(payload);
 
     return {
       username: user.username,
       name: user.name,
-      token: user.token ?? '',
+      token,
     };
   }
 
@@ -120,19 +115,7 @@ export class AuthService {
     };
   }
 
-  async logout(user: User): Promise<UserResponse> {
-    const result = await this.prismaService.user.update({
-      where: {
-        username: user.username,
-      },
-      data: {
-        token: null,
-      },
-    });
-
-    return {
-      username: result.username,
-      name: result.name,
-    };
+  logout(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 }
