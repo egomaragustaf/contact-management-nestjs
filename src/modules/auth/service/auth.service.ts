@@ -94,7 +94,6 @@ export class AuthService {
   }
 
   async update(user: User, request: UpdateUserRequest): Promise<UserResponse> {
-
     const updateRequest: UpdateUserRequest = this.validationService.validate(
       UserValidation.UPDATE,
       request,
