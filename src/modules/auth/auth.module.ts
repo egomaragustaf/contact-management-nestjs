@@ -4,6 +4,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { AuthController } from './controller/auth.controller';
 import { AuthService } from './service/auth.service';
+import { APP_PIPE } from '@nestjs/core';
+import { ValidationPipe } from 'src/common/pipe/validation.pipe';
 
 @Module({
   imports: [
