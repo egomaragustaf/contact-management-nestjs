@@ -1,9 +1,13 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/common/prisma/prisma.service';
-import { User } from 'src/generated/prisma/client';
-import { RegisterDto } from '../dto/create-auth.dto';
+import { RegisterDto } from '../dto/register.dto';
+import { LoginDto } from '../dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -39,35 +43,40 @@ export class AuthService {
     };
   }
 
-  // async login(request: LoginUserRequest): Promise<UserResponse> {
-  //   const user = await this.prismaService.user.findUnique({
-  //     where: {
-  //       username: loginRequest.username,
-  //     },
-  //   });
+  async login(request: Omit<LoginDto, 'password'>) {
+    const payload = { sub: request.id, username: request.username };
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '30m',
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: '7d',
+    });
 
-  //   if (!user) {
-  //     throw new HttpException('Username or password is invalid', 401);
-  //   }
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
 
-  //   const isPasswordValid = await bcrypt.compare(
-  //     loginRequest.password,
-  //     user.password,
-  //   );
+  async validateUser(username: string, password: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-  //   if (!isPasswordValid) {
-  //     throw new HttpException('Username or password is invalid', 401);
-  //   }
+    if (!user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
-  //   const payload = { sub: user.username, username: user.username };
-  //   const token = await this.jwtService.signAsync(payload);
+    const isValidPassword = await bcrypt.compare(password, user.password);
 
-  //   return {
-  //     username: user.username,
-  //     name: user.name,
-  //     token,
-  //   };
-  // }
+    if (!isValidPassword) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const { password: _, ...result } = user;
+
+    return result;
+  }
 
   // async get(user: User): Promise<UserResponse> {
   //   return {
